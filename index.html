@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Banc optique 3D – Mission AlexNova</title>
   <meta name="description" content="Banc optique virtuel en 3D : lentille mince convergente f' = 10 cm, recherche de la position de l'image nette.">
-  <link rel="stylesheet" href="css/style.css?v=1.1">
+  <link rel="stylesheet" href="css/style.css?v=1.2">
   <script type="importmap">
     { "imports": { "three": "./lib/three.module.min.js" } }
   </script>
@@ -26,6 +26,10 @@
       </div>
 
       <button id="btn-plein-ecran" title="Plein écran" aria-label="Plein écran">⛶</button>
+      <div id="zoom-btns">
+        <button id="btn-zoom-plus" title="Zoomer (s'approcher)" aria-label="Zoomer">+</button>
+        <button id="btn-zoom-moins" title="Dézoomer (s'éloigner)" aria-label="Dézoomer">−</button>
+      </div>
 
       <div id="aide-souris">
         🖱️ Clic gauche : tourner · Molette : zoom · Clic droit : déplacer la vue · Glisser la lanterne ou l'écran pour les déplacer
@@ -141,6 +145,6 @@
 
   <noscript>Ce simulateur nécessite JavaScript.</noscript>
   <div id="erreur-webgl" hidden>Votre navigateur ne permet pas l'affichage 3D (WebGL). Essayez avec Firefox, Chrome ou Edge à jour.</div>
-  <script type="module" src="js/app.js?v=1.0"></script>
+  <script type="module" src="js/app.js?v=1.2"></script>
 </body>
 </html>
