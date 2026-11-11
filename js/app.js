@@ -405,6 +405,44 @@ function majRayons() {
 }
 
 /* ================================================================ CONTRÔLES */
+/* ---------------------------------------------- zoom progressif (molette) */
+// Le zoom de la molette d'OrbitControls est remplacé : pas fixe de 8 % par cran,
+// quel que soit le navigateur, la souris ou le pavé tactile, avec un mouvement adouci,
+// dirigé vers le point visé par le curseur. (Le pincement à deux doigts reste géré par OrbitControls.)
+const ZOOM_PAS = 1.08;         // facteur par cran de molette (plus proche de 1 = plus fin)
+const ZOOM_DOUCEUR = 0.22;     // fraction du chemin parcourue à chaque image (animation)
+let zoomAnim = null;           // { dist, cible } visés
+const _v = new THREE.Vector3();
+function zoomer(crans, clientX = null, clientY = null) {
+  anim = null;
+  const cibleAct = zoomAnim ? zoomAnim.cible.clone() : controls.target.clone();
+  const distAct = zoomAnim ? zoomAnim.dist : camera.position.distanceTo(controls.target);
+  const facteur = Math.pow(ZOOM_PAS, crans);  // > 1 : on s'éloigne, < 1 : on s'approche
+  const dist = clamp(distAct * facteur, controls.minDistance, controls.maxDistance);
+  const k = 1 - dist / distAct;                // part du déplacement vers le point visé
+  const cible = cibleAct.clone();
+  if (clientX !== null && k > 0) {
+    // point visé : intersection du rayon souris avec le plan perpendiculaire à la vue passant par la cible
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    camera.getWorldDirection(_v);
+    const plan = new THREE.Plane().setFromNormalAndCoplanarPoint(_v.clone(), cibleAct);
+    const p = new THREE.Vector3();
+    if (ray.ray.intersectPlane(plan, p)) cible.lerp(p, k);
+  }
+  zoomAnim = { dist, cible };
+}
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  e.stopImmediatePropagation();       // empêche le zoom d'origine d'OrbitControls
+  if (drag) return;
+  // conversion en « crans » : 1 cran ≈ 100 px (souris), 3 lignes (Firefox) ; pavé tactile = fractions de cran
+  let crans = e.deltaMode === 1 ? e.deltaY / 3 : e.deltaMode === 2 ? e.deltaY : e.deltaY / 100;
+  crans = clamp(crans, -2, 2);
+  if (crans) zoomer(crans, e.clientX, e.clientY);
+}, { capture: true, passive: false });
+
 const controls = new OrbitControls(camera, renderer.domElement);
 // (les écouteurs de glisser-déposer sont ajoutés plus bas en phase de capture)
 controls.enableDamping = true;
@@ -413,7 +451,7 @@ controls.screenSpacePanning = true;
 controls.minDistance = 0.04;
 controls.maxDistance = 3.5;
 controls.maxPolarAngle = Math.PI * 0.53;
-controls.zoomToCursor = true;
+controls.zoomToCursor = false;
 
 const VUES = {
   perspective: () => ({ pos: [0.7, 0.62, 1.15], cible: [-0.04, 0.13, 0], recul: true }),
@@ -438,10 +476,11 @@ function allerVue(nom, instant = false) {
   // fenêtre étroite (iframe, tablette en portrait) : on recule pour voir tout le banc
   if (v.recul) p1.sub(c1).multiplyScalar(clamp(1.5 / camera.aspect, 1, 1.9)).add(c1);
   if (instant) { camera.position.copy(p1); controls.target.copy(c1); controls.update(); return; }
+  zoomAnim = null;
   anim = { t0: performance.now(), dur: 750, p0: camera.position.clone(), c0: controls.target.clone(), p1, c1 };
 }
 document.querySelectorAll('#vues button').forEach((b) => b.addEventListener('click', () => allerVue(b.dataset.vue)));
-controls.addEventListener('start', () => { anim = null; document.querySelectorAll('#vues button').forEach((b) => b.classList.remove('actif')); });
+controls.addEventListener('start', () => { anim = null; zoomAnim = null;document.querySelectorAll('#vues button').forEach((b) => b.classList.remove('actif')); });
 
 /* ----------------------------------------- glisser la lanterne ou l'écran */
 const ray = new THREE.Raycaster();
@@ -675,6 +714,14 @@ $('btn-correction').addEventListener('click', () => {
   $('btn-correction').hidden = true;
   lierFaisceau(); maj();
 });
+// boutons + / − : un cran à chaque clic, répétition si on maintient le bouton appuyé
+for (const [id, crans] of [['btn-zoom-plus', -1], ['btn-zoom-moins', 1]]) {
+  let rep = null;
+  const stop = () => { clearInterval(rep); rep = null; };
+  $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); zoomer(crans); stop(); rep = setInterval(() => zoomer(crans * 0.5), 90); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $(id).addEventListener(ev, stop);
+  $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); zoomer(crans); } });
+}
 $('btn-plein-ecran').addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.getElementById('app').requestFullscreen?.().catch(() => toast('Plein écran indisponible ici.'));
@@ -710,6 +757,14 @@ new ResizeObserver(redimensionner).observe(conteneur);
 redimensionner();
 
 function boucle(t) {
+  if (zoomAnim) {
+    const dir = _v.subVectors(camera.position, controls.target).normalize();
+    controls.target.lerp(zoomAnim.cible, ZOOM_DOUCEUR);
+    const d0 = camera.position.distanceTo(controls.target);
+    const d = d0 + (zoomAnim.dist - d0) * ZOOM_DOUCEUR;
+    camera.position.copy(controls.target).addScaledVector(dir, d);
+    if (Math.abs(d - zoomAnim.dist) < 1e-4 && controls.target.distanceTo(zoomAnim.cible) < 1e-4) zoomAnim = null;
+  }
   if (anim) {
     const k = clamp((t - anim.t0) / anim.dur, 0, 1), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
     camera.position.lerpVectors(anim.p0, anim.p1, e);
@@ -759,4 +814,4 @@ function mesurerImage() {
   }
   return { nettete: S ? +(G / S).toFixed(3) : 0, hauteur_cm: +(((yMax - yMin + 1) * mmpx) / 10).toFixed(2), bord_mm: +((y10 - y90) * mmpx).toFixed(2), haut_image_px: yMax, axe_px: R / 2 };
 }
-window.__banc = { etat, setOA: (v) => setOA(v, true), setEcran, allerVue, mesurerImage, P };
+window.__banc = { etat, setOA: (v) => setOA(v, true), setEcran, allerVue, mesurerImage, P, dist: () => camera.position.distanceTo(controls.target) };
