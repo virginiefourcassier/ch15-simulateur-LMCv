@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Banc optique 3D – Mission AlexNova</title>
+  <meta name="description" content="Banc optique virtuel en 3D : lentille mince convergente f' = 10 cm, recherche de la position de l'image nette.">
+  <link rel="stylesheet" href="css/style.css?v=1.0">
+  <script type="importmap">
+    { "imports": { "three": "./lib/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- ================= SCÈNE 3D ================= -->
+    <section id="scene-zone" aria-label="Banc optique en 3D">
+      <div id="viewport" tabindex="0" aria-label="Scène 3D : faites glisser pour tourner, molette pour zoomer"></div>
+
+      <div id="vues" role="toolbar" aria-label="Points de vue">
+        <button data-vue="perspective" title="Vue oblique en perspective">Perspective</button>
+        <button data-vue="face" title="Vue de face, comme un élève devant la paillasse">De face</button>
+        <button data-vue="cote" title="Vue de côté, dans l'axe du banc">De côté</button>
+        <button data-vue="dessus" title="Vue depuis le dessus">Dessus</button>
+        <button data-vue="ecran" title="Se placer face à l'écran pour observer l'image">Face à l'écran</button>
+        <button data-vue="reset" class="reset" title="Revenir à la vue de départ">↺ Réinitialiser la vue</button>
+      </div>
+
+      <button id="btn-plein-ecran" title="Plein écran" aria-label="Plein écran">⛶</button>
+
+      <div id="aide-souris">
+        🖱️ Clic gauche : tourner · Molette : zoom · Clic droit : déplacer la vue · Glisser la lanterne ou l'écran pour les déplacer
+        <span class="tactile">📱 1 doigt : tourner · 2 doigts : zoom / déplacer</span>
+      </div>
+
+      <div id="mesures" aria-live="polite">
+        <div><span class="lbl">x = OA</span> <b id="m-oa">—</b> <span id="m-oa-lock" hidden>🔒</span></div>
+        <div><span class="lbl">OA' (position de l'écran)</span> <b id="m-ecran">—</b></div>
+      </div>
+    </section>
+
+    <!-- ================= PANNEAU ================= -->
+    <aside id="panneau">
+      <header>
+        <h1>Banc optique 3D</h1>
+        <p class="sous-titre">Lentille mince convergente · f' = 10,0 cm · AB = 2,0 cm</p>
+        <div class="onglets" role="tablist">
+          <button role="tab" id="tab-mission" aria-selected="true">📸 Mission AlexNova</button>
+          <button role="tab" id="tab-libre" aria-selected="false">🔬 Exploration libre</button>
+        </div>
+      </header>
+
+      <!-- ---------- MISSION ---------- -->
+      <div id="pane-mission" class="pane">
+        <div class="insta">
+          <div class="avatar" aria-hidden="true">AN</div>
+          <div class="bulle">
+            <div class="pseudo">alexnova.photo <span class="badge">✔</span></div>
+            <p id="bulle-texte">Salut ! 👋 Pour photographier la voiture, je dois savoir où se forme une image <b>nette</b>. La lanterne est bloquée, à toi de trouver la bonne place pour l'écran !</p>
+          </div>
+        </div>
+
+        <div class="consigne">
+          <div class="consigne-titre">🎯 Ta mission</div>
+          <p class="impose">Objet imposé : <b>x = OA = <span id="mi-oa">20,0</span> cm</b> 🔒</p>
+          <ol>
+            <li>Déplace l'écran jusqu'à obtenir une image <b>nette</b> du « F ».</li>
+            <li>Relève la distance <b>OA'</b> entre la lentille et l'écran.</li>
+            <li>Saisis ta mesure puis valide.</li>
+          </ol>
+        </div>
+
+        <div class="controle">
+          <label for="sl-ecran-m">Position de l'écran</label>
+          <input type="range" id="sl-ecran-m" min="5" max="75" step="0.1">
+          <div class="fins">
+            <button data-dx="-1">−1 cm</button>
+            <button data-dx="-0.1">−1 mm</button>
+            <button data-dx="0.1">+1 mm</button>
+            <button data-dx="1">+1 cm</button>
+          </div>
+        </div>
+
+        <div class="saisie">
+          <label for="in-mesure">Ma mesure : OA' =</label>
+          <input id="in-mesure" type="text" inputmode="decimal" placeholder="ex : 18,5" autocomplete="off">
+          <span>cm</span>
+          <button id="btn-valider" class="primaire">Valider</button>
+        </div>
+
+        <div id="retour" aria-live="polite"></div>
+
+        <div class="aides">
+          <div class="aides-titre">💡 Besoin d'un coup de pouce ?</div>
+          <details><summary>Aide 1</summary><p>Repère le centre optique O (le « 0 » du rail, sous la lentille) et la position actuelle de l'écran (son index rouge sur le rail).</p></details>
+          <details><summary>Aide 2</summary><p>Déplace progressivement l'écran et observe l'évolution de la netteté de l'image. Utilise les boutons ±1 mm près du meilleur réglage.</p></details>
+          <details><summary>Aide 3</summary><p>Lorsque les contours de l'image sont les plus nets, relève la distance entre l'écran et le centre optique O.</p></details>
+          <details><summary>Astuce d'observation</summary><p>Clique sur « Face à l'écran » pour regarder l'image de près. Approche-toi encore avec la molette si besoin.</p></details>
+        </div>
+
+        <div class="actions">
+          <button id="btn-correction" hidden>Voir la correction</button>
+          <button id="btn-nouvelle" class="secondaire">🔄 Nouvelle mission</button>
+        </div>
+      </div>
+
+      <!-- ---------- LIBRE ---------- -->
+      <div id="pane-libre" class="pane" hidden>
+        <div class="consigne">
+          <div class="consigne-titre">🔬 Exploration libre</div>
+          <p>Déplace la lanterne et l'écran. Observe la position, le sens, la taille et la netteté de l'image.</p>
+        </div>
+        <div class="controle">
+          <label for="sl-oa">Position de la lanterne (x = OA)</label>
+          <input type="range" id="sl-oa" min="11" max="65" step="0.1">
+        </div>
+        <div class="controle">
+          <label for="sl-ecran-l">Position de l'écran (OA')</label>
+          <input type="range" id="sl-ecran-l" min="5" max="75" step="0.1">
+          <div class="fins">
+            <button data-dx="-1">−1 cm</button>
+            <button data-dx="-0.1">−1 mm</button>
+            <button data-dx="0.1">+1 mm</button>
+            <button data-dx="1">+1 cm</button>
+          </div>
+        </div>
+        <fieldset class="options">
+          <legend>Affichages</legend>
+          <label><input type="checkbox" id="cb-reperes" checked> Repères O, F, F', A, B</label>
+          <label><input type="checkbox" id="cb-rayons"> Faisceau lumineux issu de B</label>
+          <label><input type="checkbox" id="cb-theorie"> Valeurs calculées (OA', |γ|, A'B')</label>
+        </fieldset>
+        <div id="theorie" hidden></div>
+      </div>
+
+      <footer>
+        Simulation libre et gratuite · Three.js (licence MIT) · inspirée du banc optique virtuel de W. Fortin
+      </footer>
+    </aside>
+  </div>
+
+  <noscript>Ce simulateur nécessite JavaScript.</noscript>
+  <div id="erreur-webgl" hidden>Votre navigateur ne permet pas l'affichage 3D (WebGL). Essayez avec Firefox, Chrome ou Edge à jour.</div>
+  <script type="module" src="js/app.js?v=1.0"></script>
+</body>
+</html>
