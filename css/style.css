@@ -135,6 +135,7 @@ button.secondaire { background: var(--parme); font-weight: bold; }
 #theorie { background: #f2eef6; border-radius: 10px; padding: 8px 12px; font-size: 14px; line-height: 1.5; }
 
 footer { margin-top: auto; padding-top: 10px; font-size: 11px; color: #9a90a4; text-align: center; }
+footer .signature { font-size: 13px; color: var(--violet-fonce); margin-bottom: 3px; }
 
 #erreur-webgl { position: fixed; inset: 0; display: grid; place-items: center; background: #fff; font-size: 18px; padding: 20px; text-align: center; }
 #erreur-webgl[hidden] { display: none; }
